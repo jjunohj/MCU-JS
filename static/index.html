@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCU Video Conference</title>
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  <body>
+    <div class="background">
+      <div class="input-container">
+        <h1 class="title" id="title">MCU Project</h1>
+        <div class="video-container">
+          <video
+            class="video"
+            id="localVideo"
+            autoplay
+            playsinline
+            muted
+            controls
+          ></video>
+          <video
+            class="video"
+            id="remoteVideo"
+            autoplay
+            playsinline
+            controls
+          ></video>
+        </div>
+        <div class="input-container">
+          <input
+            type="text"
+            class="input"
+            id="userName"
+            placeholder="이름을 입력해주세요."
+          />
+          <input
+            type="text"
+            class="input"
+            id="roomName"
+            placeholder="세션 이름을 입력해주세요."
+          />
+          <button class="enterBtn" id="enterBtn">입장</button>
+          <button class="exitBtn" id="exitBtn">나가기</button>
+        </div>
+      </div>
+    </div>
+    <script src="./node_modules/socket.io-client/dist/socket.io.js"></script>
+    <script src="./node_modules/kurento-utils/dist/kurento-utils.js"></script>
+    <script src="./node_modules/kurento-utils/dist/kurento-utils.min.js"></script>
+    <script src="./node_modules/webrtc-adapter/out/adapter.js"></script>
+    <script src="./js/index.js"></script>
+  </body>
+</html>
