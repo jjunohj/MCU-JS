@@ -15,6 +15,12 @@ const constraints = {
   },
 };
 
+const iceServers = [
+  {
+    urls: "stun:stun.l.google.com:19302",
+  },
+];
+
 const socket = io("https://" + location.host);
 
 window.onbeforeunload = () => {
@@ -49,13 +55,20 @@ socket.on("message", (message) => {
 
     case "sdpAnswer":
       if (webRtcPeer) {
-        console.log(message.sdpAnswer);
-        webRtcPeer.processAnswer(message.sdpAnswer);
+        webRtcPeer.processAnswer(message.sdpAnswer, (err) => {
+          if (err) {
+            console.log(`processAnswer error: ${err}`);
+          }
+          console.log(
+            `sdpAnswer from ${message.userId}'s webRtcEndpoint processed`
+          );
+        });
       }
       break;
 
     case "iceCandidate":
       if (webRtcPeer) {
+        console.log(`addIceCandidate from ${message.userId}`);
         console.log(message.candidate);
         webRtcPeer.addIceCandidate(message.candidate);
         break;
@@ -112,10 +125,11 @@ const onIceCandidate = (candidate) => {
 
 const initPeer = async () => {
   const options = {
-    localVideo,
-    remoteVideo,
+    localVideo: localVideo,
+    remoteVideo: remoteVideo,
     onicecandidate: onIceCandidate,
-    constraints,
+    constraints: constraints,
+    iceServers: iceServers,
   };
   webRtcPeer = await kurentoUtils.WebRtcPeer.WebRtcPeerSendrecv(
     options,
@@ -123,6 +137,7 @@ const initPeer = async () => {
       if (error) {
         return console.error("Error creating WebRtcPeerSendonly:", error);
       }
+      console.log("WebRtcPeerSendonly created, generating local sdp offer ...");
       webRtcPeer.generateOffer(onSdpOffer);
     }
   );
@@ -140,6 +155,7 @@ const onSdpOffer = (error, sdpOffer) => {
     roomName: roomNameInput.value,
     sdpOffer: sdpOffer,
   };
+  console.log(`${message.userName} sending sdp offer to server ...`);
   sendMessage(message);
 };
 

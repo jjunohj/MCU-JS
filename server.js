@@ -12,8 +12,8 @@ let rooms = {};
 
 const argv = minimist(process.argv.slice(2), {
   default: {
-    as_uri: "https://10.168.69.118:8443/",
-    ws_uri: "ws://10.168.69.118:8888/kurento",
+    as_uri: "https://192.168.0.7:8443/",
+    ws_uri: "ws://192.168.0.7:8888/kurento",
   },
 });
 
@@ -68,11 +68,11 @@ io.on("connection", (socket) => {
           }
         });
         try {
-          const sdpAnswer = room.receiveSdpOffer(
+          await room.receiveSdpOffer(
             io,
             socket.id,
             message.sdpOffer,
-            (err) => {
+            (err, sdpAnswer) => {
               if (err) {
                 console.log(`receiveSdpOffer error: ${err}`);
               }
@@ -100,6 +100,7 @@ io.on("connection", (socket) => {
             if (err) {
               console.log(`addIceCandidate error: ${err}`);
             }
+            console.log(`user: ${message.userName} addIceCandidate`);
           });
         });
         break;
@@ -128,8 +129,7 @@ const joinRoom = async (socket, message, callback) => {
     }
   });
   /**
-   * 새로운 webRtcEndpoint, hubPort를 생성한다.
-   * composite -> hubPort -> webRtcEndpoint 로 연결한다.
+   * create pipeline -> composite -> hubPort -> webRtcEndpoint
    */
   room.join(socket.id, (error) => {
     if (error) {
@@ -142,7 +142,7 @@ const joinRoom = async (socket, message, callback) => {
       roomName: message.roomName,
     };
 
-    console.log(`user: ${message.userName} joined room: ${room.name}`);
+    console.log(`user: ${response.userName} joined room: ${response.roomName}`);
     console.log("send message to client: " + response.id);
     socket.emit("message", response);
     return callback(null);
