@@ -8,12 +8,12 @@ const url = require("url");
 const Room = require("./lib/room.js");
 
 const app = express();
-let rooms = {};
+let rooms = new Map();
 
 const argv = minimist(process.argv.slice(2), {
   default: {
-    as_uri: "https://192.168.0.7:8443/",
-    ws_uri: "ws://192.168.0.7:8888/kurento",
+    as_uri: "https://172.30.1.57:8443/",
+    ws_uri: "ws://172.30.1.57:8888/kurento",
   },
 });
 
@@ -62,13 +62,13 @@ io.on("connection", (socket) => {
         break;
 
       case "sdpOffer":
-        const room = getRoom(message.roomName, (err) => {
+        const room = await getRoom(message.roomName, (err) => {
           if (err) {
             console.log(`couldn't find room: ${message.roomName}`);
           }
         });
         try {
-          await room.receiveSdpOffer(
+          room.receiveSdpOffer(
             io,
             socket.id,
             message.sdpOffer,
@@ -92,18 +92,23 @@ io.on("connection", (socket) => {
         break;
 
       case "onIceCandidate":
-        getRoom(message.roomName, (err, room) => {
-          if (err) {
-            console.log(`addIceCandidate error: ${err}`);
-          }
+        try {
+          const room = await getRoom(message.roomName, (err) => {
+            if (err) {
+              console.log(`couldn't find room: ${message.roomName}`);
+            }
+          });
           room.processIceCandidate(socket.id, message.candidate, (err) => {
             if (err) {
               console.log(`addIceCandidate error: ${err}`);
             }
             console.log(`user: ${message.userName} addIceCandidate`);
           });
-        });
-        break;
+          break;
+        } catch (err) {
+          console.log(`onIceCandidate error: ${err}`);
+          break;
+        }
 
       case "leaveRoom":
         getRoom(message.roomName, (err, room) => {
@@ -123,18 +128,13 @@ io.on("connection", (socket) => {
 });
 
 const joinRoom = async (socket, message, callback) => {
-  const room = await getRoom(message.roomName, (error) => {
-    if (error) {
-      return callback(error, null);
-    }
-  });
-  /**
-   * create pipeline -> composite -> hubPort -> webRtcEndpoint
-   */
-  room.join(socket.id, (error) => {
-    if (error) {
-      return callback(error);
-    }
+  try {
+    const room = await getRoom(message.roomName);
+    await room.join(socket.id, (err) => {
+      if (err) {
+        console.log(`joinRoom error: ${err}`);
+      }
+    });
 
     const response = {
       id: "joinRoomSuccess",
@@ -145,32 +145,31 @@ const joinRoom = async (socket, message, callback) => {
     console.log(`user: ${response.userName} joined room: ${response.roomName}`);
     console.log("send message to client: " + response.id);
     socket.emit("message", response);
-    return callback(null);
-  });
-
-  return callback(null);
+    callback(null);
+  } catch (error) {
+    callback(error);
+  }
 };
 
-const getRoom = (roomName, callback) => {
-  let room = rooms[roomName];
+const getRoom = async (roomName, callback) => {
+  const room = rooms.get(roomName);
 
-  if (room == null) {
-    const newRoom = new Room(roomName, (error) => {
-      if (error) {
-        return callback(error);
-      }
+  if (room == undefined) {
+    try {
+      const newRoom = new Room(roomName);
+      rooms.set(roomName, newRoom);
       console.log(`new room created: ${roomName}`);
-    });
-    rooms[roomName] = newRoom;
-
-    return newRoom;
+      return newRoom;
+    } catch (error) {
+      throw error;
+    }
   } else {
     return room;
   }
 };
 
-app.get("/", (req, res) => {
-  res.send("Group Call Server");
-});
-
 app.use(express.static(path.join(__dirname, "static")));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "static/index.html"));
+});

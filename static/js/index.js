@@ -17,7 +17,7 @@ const constraints = {
 
 const iceServers = [
   {
-    urls: "stun:stun.l.google.com:19302",
+    urls: ["stun:stun.l.google.com:19302"],
   },
 ];
 
